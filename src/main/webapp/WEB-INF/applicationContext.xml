@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:context="http://www.springframework.org/schema/context"
+     xmlns:tx="http://www.springframework.org/schema/tx"
+     xmlns:jpa="http://www.springframework.org/schema/data/jpa"
+     xmlns:task="http://www.springframework.org/schema/task"
+     xmlns:aop="http://www.springframework.org/schema/aop"
+    xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+        http://www.springframework.org/schema/data/jpa http://www.springframework.org/schema/data/jpa/spring-jpa.xsd
+        http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd">
+        
+        <context:component-scan base-package="com.test" />
+        
+        <bean id="user" class="com.test.bean.User">
+          <property name="name" value="XiaoJiQing"></property>
+          <property name="email" value="ciscog@yeah.net"></property>
+        </bean>
+        
+<!--         <bean id="userDao" class="com.test.dao.UserDao"> -->
+<!--            <property name="sessionFactory" ref="sessionFactory"></property> -->
+<!--         </bean> -->
+        
+        
+        
+        
+         <context:property-placeholder location="/WEB-INF/mysql.properties"/>
+        
+        
+        <bean id="dataSource" class="org.springframework.jdbc.datasource.DriverManagerDataSource">
+           <property name="driverClassName" value="${jdbc.driverClassName}"></property>
+           <property name="url" value="${jdbc.url}"></property>
+           <property name="username" value="${jdbc.user}"></property>
+           <property name="password" value="${jdbc.pass}"></property>
+        </bean>
+        
+        
+        <bean id="sessionFactory" class="org.springframework.orm.hibernate4.LocalSessionFactoryBean">
+           <property name="dataSource" ref="dataSource"></property>
+           <property name="packagesToScan">
+               <list>
+                  <value>com.test.bean</value>
+               </list>
+           </property>
+           <property name="hibernateProperties">
+              <props>
+                  <prop key="hibernate.hbm2ddl.auto">${hibernate.hbm2ddl.auto}</prop>
+                  <prop key="hibernate.dialect">${hibernate.dialect}</prop>
+                  <prop key="hibernate.show_sql">${hibernate.show_sql}</prop>
+              </props>
+           </property>
+        </bean>
+        
+        <bean id="transctionManger" class="org.springframework.orm.hibernate4.HibernateTransactionManager">
+             <property name="sessionFactory" ref="sessionFactory"></property>
+        </bean>
+        
+        <bean id="persistenceExceptionTranslationPostProcessor" 
+       class="org.springframework.dao.annotation.PersistenceExceptionTranslationPostProcessor" />
+
+        <bean id="hibernateJpaVendorAdapter" class="org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter">
+        </bean>
+        <bean id="entityManagerFactory" class="org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean">
+              <property name="dataSource" ref="dataSource"></property>
+              <property name="jpaVendorAdapter" ref="hibernateJpaVendorAdapter"></property>
+              <property name="packagesToScan">
+                       <array>
+                            <value>com.test.dao</value>
+                            <value>com.test.bean</value>
+                       </array>
+              </property>
+              <property name="jpaProperties">
+                 <props>
+                  <prop key="hibernate.hbm2ddl.auto">${hibernate.hbm2ddl.auto}</prop>
+                  <prop key="hibernate.dialect">${hibernate.dialect}</prop>
+                  <prop key="hibernate.show_sql">${hibernate.show_sql}</prop>
+                 </props>
+              </property>
+        </bean> 
+        <bean id="jpaTransactionManager" class="org.springframework.orm.jpa.JpaTransactionManager"></bean>       
+        <jpa:repositories base-package="com.test.dao" transaction-manager-ref="jpaTransactionManager" entity-manager-factory-ref="entityManagerFactory" />
+       
+       
+       <bean id="myRealm" class="com.test.shiro.MyRealm"></bean>
+       <bean id="securityManager" class="org.apache.shiro.web.mgt.DefaultWebSecurityManager">
+            <property name="realm" ref="myRealm"></property>
+       </bean>
+       <bean id="shiroFilter" class="org.apache.shiro.spring.web.ShiroFilterFactoryBean">
+             <property name="securityManager" ref="securityManager"></property>
+             <property name="loginUrl" value="/realm/login"></property>
+             <property name="successUrl" value="/test/hi"></property>
+             <property name="unauthorizedUrl" value="/realm/unauthorized"></property>
+             <property name="filterChainDefinitions">
+                     <value>
+                                 /anon/**=anon
+                                 /authc/**=authc
+                                 /test/**=authc
+                                 /admin/**=authc,perms[admin:manager]
+                     </value>
+             </property>
+       </bean>
+       <bean id="lifecycleBeanPostProcessor" class="org.apache.shiro.spring.LifecycleBeanPostProcessor"></bean>
+       
+       <bean id="jobTest" class="com.test.quartz.MyQuartz"></bean>
+       <bean id="testTask" class="org.springframework.scheduling.quartz.MethodInvokingJobDetailFactoryBean">
+               <property name="targetObject" ref="jobTest"></property>
+               <property name="targetMethod" value="work"></property>
+       </bean>
+       <bean id="testTrigger" class="org.springframework.scheduling.quartz.CronTriggerFactoryBean">
+               <property name="jobDetail" ref="testTask"></property>
+               <property name="cronExpression" value="10 10 10 * * ?"></property>
+       </bean>
+       <bean id="startQuartz" class="org.springframework.scheduling.quartz.SchedulerFactoryBean" autowire="no" lazy-init="false">
+             <property name="triggers">
+                     <list>
+                         <ref bean="testTrigger" />
+                     </list>
+             </property>
+       </bean>
+</beans>
